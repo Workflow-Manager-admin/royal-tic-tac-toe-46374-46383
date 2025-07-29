@@ -1,8 +1,25 @@
-# Astro Starter Kit: Minimal
+# Tic Tac Toe Kings and Queens
+
+A modern Astro frontend for Tic Tac Toe, using kings (X) and queens (O) as unique piece icons.
+
+## Features
+- Interactive, responsive tic tac toe board
+- Beautiful SVG icons for kings (X) and queens (O)
+- Score tracking for each player and draws
+- Restart (keep scores) and Reset (reset all) controls
+- Clean, centered layout, minimalistic light theme
+- Colors: **Primary** `#4a90e2`, **Accent** `#f5a623`, **Secondary** `#ecf0f1`
+- Modern web, mobile-friendly
+
+## Usage
 
 ```sh
-npm create astro@latest -- --template minimal
+npm install
+npm run dev
 ```
+
+Visit `http://localhost:3000`
+
 
 [![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/minimal)
 [![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/minimal)

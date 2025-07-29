@@ -1,0 +1,340 @@
+---
+/*
+GameBoard.astro
+- Interactive Tic Tac Toe board with "kings" as X and "queens" as O (SVG icons)
+- Score tracking
+- Restart/Reset controls
+- Responsive, centered, minimalistic, modern design (uses provided primary, accent, and secondary colors)
+- Light theme
+*/
+const boardSize = 3;
+---
+
+<div class="game-container">
+  <header>
+    <h1>Tic Tac Toe: Kings &amp; Queens</h1>
+    <p class="subtitle">X = King 👑 &nbsp;|&nbsp; O = Queen 👸</p>
+  </header>
+  <div id="board-status" class="status"></div>
+  <div id="board" class="board">
+    <!-- cells will be rendered by JS -->
+  </div>
+  <div class="score-controls">
+    <div class="scores">
+      <div>
+        <span class="icon king" title="King (X)"><svg width="24" height="24" viewBox="0 0 36 36" fill="none"><path d="M10 29H26V32H10V29Z" fill="#4a90e2"/><path d="M6 26h24l-3-14-5 8-4-6-5 8-3-14" fill="#f5a623" stroke="#4a90e2" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="9" r="2" fill="#4a90e2"/><circle cx="18" cy="5" r="2" fill="#4a90e2"/><circle cx="29" cy="9" r="2" fill="#4a90e2"/></svg></span>
+        <span id="score-x">0</span>
+      </div>
+      <div>
+        <span class="icon queen" title="Queen (O)"><svg width="24" height="24" viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="24" rx="10" ry="7" fill="#f5a623" stroke="#4a90e2" stroke-width="2"/><path d="M12 23L10 15l7 6.5L24 15l-2 8" fill="none" stroke="#4a90e2" stroke-width="2"/><circle cx="18" cy="11" r="2.2" fill="#4a90e2"/><circle cx="25" cy="13" r="1.5" fill="#4a90e2"/><circle cx="11" cy="13" r="1.5" fill="#4a90e2"/></svg></span>
+        <span id="score-o">0</span>
+      </div>
+      <div>
+        <span title="Draws" class="icon draw" style="font-size:1.5em;color:#aaa;">–</span>
+        <span id="score-draw">0</span>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="restart-btn" type="button" class="restart" aria-label="Restart game">Restart Game</button>
+      <button id="reset-btn" type="button" class="reset" aria-label="Reset scores">Reset Scores</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  // Game state
+  let board = Array({boardSize}).fill(null).map(() => Array({boardSize}).fill(null));
+  let xTurn = true;
+  let gameActive = true;
+  let scoreX = 0, scoreO = 0, scoreDraw = 0;
+
+  // DOM Elements
+  const boardDiv = document.getElementById('board');
+  const statusDiv = document.getElementById('board-status');
+  const scoreXElem = document.getElementById('score-x');
+  const scoreOElem = document.getElementById('score-o');
+  const scoreDrawElem = document.getElementById('score-draw');
+  const restartBtn = document.getElementById('restart-btn');
+  const resetBtn = document.getElementById('reset-btn');
+
+  const kingSVG = `<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><path d="M10 29H26V32H10V29Z" fill="#4a90e2"/><path d="M6 26h24l-3-14-5 8-4-6-5 8-3-14" fill="#f5a623" stroke="#4a90e2" stroke-width="2" stroke-linejoin="round"/><circle cx="7" cy="9" r="2" fill="#4a90e2"/><circle cx="18" cy="5" r="2" fill="#4a90e2"/><circle cx="29" cy="9" r="2" fill="#4a90e2"/></svg>`;
+  const queenSVG = `<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="24" rx="10" ry="7" fill="#f5a623" stroke="#4a90e2" stroke-width="2"/><path d="M12 23L10 15l7 6.5L24 15l-2 8" fill="none" stroke="#4a90e2" stroke-width="2"/><circle cx="18" cy="11" r="2.2" fill="#4a90e2"/><circle cx="25" cy="13" r="1.5" fill="#4a90e2"/><circle cx="11" cy="13" r="1.5" fill="#4a90e2"/></svg>`;
+
+  // Initialize board
+  function renderBoard() {
+    boardDiv.innerHTML = "";
+    for (let r = 0; r < {boardSize}; r++) {
+      for (let c = 0; c < {boardSize}; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        if(board[r][c] === 'X') {
+          cell.innerHTML = `<span class="piece king">${kingSVG}</span>`;
+        } else if(board[r][c] === 'O') {
+          cell.innerHTML = `<span class="piece queen">${queenSVG}</span>`;
+        } else {
+          cell.innerHTML = '';
+        }
+        if (gameActive && !board[r][c]) {
+          cell.addEventListener('click', handleCellClick);
+        }
+        boardDiv.appendChild(cell);
+      }
+    }
+  }
+
+  function setStatus(msg) {
+    statusDiv.textContent = msg;
+  }
+
+  function checkWinner() {
+    const lines = [];
+    // Rows and Cols
+    for(let i=0;i<{boardSize};i++) {
+      lines.push(board[i]); // rows
+      lines.push(board.map(row=>row[i])); // cols
+    }
+    // Diagonals
+    lines.push(board.map((row,i)=>row[i]));
+    lines.push(board.map((row,i)=>row[{boardSize}-1-i]));
+    for (const line of lines) {
+      if (line.every(cell => cell === 'X')) return 'X';
+      if (line.every(cell => cell === 'O')) return 'O';
+    }
+    if (board.flat().every(cell => cell)) return 'draw';
+    return null;
+  }
+
+  function updateScoresAndStatus(winner) {
+    // Score display and status message
+    if (winner === 'X') {
+      setStatus("King (X) wins! 👑");
+      scoreX++;
+    } else if (winner === 'O') {
+      setStatus("Queen (O) wins! 👸");
+      scoreO++;
+    } else if (winner === 'draw') {
+      setStatus("It's a draw.");
+      scoreDraw++;
+    } else {
+      setStatus(`${xTurn ? "King (X) 👑" : "Queen (O) 👸"}'s turn`);
+    }
+    scoreXElem.textContent = scoreX;
+    scoreOElem.textContent = scoreO;
+    scoreDrawElem.textContent = scoreDraw;
+  }
+
+  function handleCellClick(ev) {
+    if (!gameActive) return;
+    const r = parseInt(ev.currentTarget.dataset.row);
+    const c = parseInt(ev.currentTarget.dataset.col);
+    if (board[r][c]) return;
+    board[r][c] = xTurn ? 'X' : 'O';
+    xTurn = !xTurn;
+    const winner = checkWinner();
+    if (winner) {
+      gameActive = false;
+      updateScoresAndStatus(winner);
+    } else {
+      updateScoresAndStatus(null);
+    }
+    renderBoard();
+  }
+
+  function restartGame() {
+    // Keep scores, reset board/game state
+    board = Array({boardSize}).fill(null).map(() => Array({boardSize}).fill(null));
+    xTurn = true;
+    gameActive = true;
+    updateScoresAndStatus(null);
+    renderBoard();
+  }
+
+  function resetScores() {
+    // Resets everything
+    scoreX = 0;
+    scoreO = 0;
+    scoreDraw = 0;
+    restartGame();
+  }
+
+  // Responsive square board
+  function setBoardDimensions() {
+    const size = Math.min(window.innerWidth, window.innerHeight-200, 400);
+    boardDiv.style.width = boardDiv.style.height = size + "px";
+  }
+
+  window.addEventListener('resize', setBoardDimensions);
+
+  // Setup
+  function init() {
+    if (restartBtn) restartBtn.onclick = restartGame;
+    if (resetBtn) resetBtn.onclick = resetScores;
+    updateScoresAndStatus(null);
+    renderBoard();
+    setBoardDimensions();
+  }
+  // Wait for DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+</script>
+
+<style>
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 90vh;
+  padding: 32px 8px 0 8px;
+  max-width: 430px;
+  margin: 0 auto;
+}
+header {
+  width: 100%;
+  text-align: center;
+}
+header h1 {
+  font-size: 2.1rem;
+  color: #4a90e2;
+  margin: 0 0 2px 0;
+  letter-spacing: -1px;
+  font-weight: 700;
+}
+header .subtitle {
+  color: #f5a623;
+  font-size: 1.04rem;
+  font-weight: 400;
+  margin: 0 0 18px 0;
+  letter-spacing: 1px;
+}
+.status {
+  font-size: 1.07rem;
+  min-height: 29px;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #222;
+  text-align: center;
+}
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 7px;
+  background: #ecf0f1;
+  border-radius: 15px;
+  box-shadow: 0 2px 12px 0 rgba(74,144,226,0.08), 0 1.5px 6px 0 rgba(245,166,35,0.06);
+  margin-bottom: 20px;
+  width: 350px;
+  height: 350px;
+  max-width: 85vw;
+  max-height: 60vw;
+  transition: width 0.2s, height 0.2s;
+}
+.cell {
+  background: #fff;
+  border: 2px solid #f5a623;
+  border-radius: 8px;
+  box-shadow: 0 1px 8px rgba(74,144,226,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 2.5rem;
+  min-width: 0;
+  min-height: 0;
+  transition: background 0.18s;
+  aspect-ratio: 1 / 1;
+  will-change: background;
+}
+.cell:hover {
+  background: #ecf0f1;
+}
+.piece svg {
+  display: block;
+  width: 38px;
+  height: 38px;
+  margin: 0 auto;
+}
+.king svg { filter: drop-shadow(0 2px 1px #f5a62322);}
+.queen svg { filter: drop-shadow(0 2px 1px #4a90e222);}
+.score-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+  width: 100%;
+}
+.scores {
+  display: flex;
+  gap: 36px;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.11rem;
+  margin-bottom: 10px;
+}
+.scores > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #4a90e2;
+  background: #ecf0f1;
+  padding: 6px 10px;
+  border-radius: 7px;
+}
+.scores .icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+.scores .king svg { width: 24px; }
+.scores .queen svg { width: 24px; }
+
+.controls {
+  display: flex;
+  gap: 17px;
+  margin-top: 6px;
+}
+button.restart, button.reset {
+  border: none;
+  outline: none;
+  padding: 10px 18px;
+  font-size: 1.07rem;
+  border-radius: 8px;
+  font-weight: 600;
+  background: #4a90e2;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s;
+  box-shadow: 0 2px 12px rgba(74,144,226,0.12);
+}
+button.reset {
+  background: #f5a623;
+  color: #fff;
+}
+button.restart:hover, button.reset:hover {
+  box-shadow: 0 4px 18px rgba(245,166,35,0.07);
+  background: #214f7f;
+  color: #fff;
+}
+button.reset:hover {
+  background: #b57c1d;
+}
+@media (max-width: 560px) {
+  .game-container { max-width: 100vw; }
+  .board {
+    width: 98vw;
+    height: 98vw;
+    max-width: 99vw;
+    max-height: 99vw;
+  }
+}
+@media (max-width: 350px) {
+  header h1 { font-size: 1.3rem; }
+  .board { width: 85vw; height: 85vw;}
+}
+</style>
